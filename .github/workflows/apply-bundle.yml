@@ -31,7 +31,12 @@ jobs:
         run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
       - name: Test bundle helper
         shell: bash
-        run: python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+        run: |
+          if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
+            python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          else
+            echo "No helper tests yet; the foundation bundle will add them."
+          fi
       - name: Configure, build, and test the engine
         shell: bash
         run: |
@@ -64,7 +69,9 @@ jobs:
       - name: Test helper and engine before commit
         shell: bash
         run: |
-          python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
+            python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          fi
           if [ -f CMakeLists.txt ]; then
             cmake -S . -B build -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
             cmake --build build --config Debug --parallel 2

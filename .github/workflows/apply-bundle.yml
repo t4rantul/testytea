@@ -5,7 +5,7 @@ on:
     paths-ignore:
       - '.github/workflows/**'
       - 'BundleParts/**'
-  pull_request:
+  pull\_request:
 
 permissions:
   contents: write
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2022, macos-15]
+        os: \[ubuntu-24.04, windows-2022, macos-15\]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -32,46 +32,46 @@ jobs:
       - name: Expand compressed change bundles
         shell: bash
         run: |
-          python - <<'PY'
+          python - &lt;&lt;'PY'
           import base64, hashlib, lzma, pathlib
           incoming = pathlib.Path("Incoming")
-          for source in incoming.glob("*.bundle.xz.b85") if incoming.exists() else []:
-              encoded = source.read_text(encoding="ascii").strip()
+          for source in incoming.glob("*.bundle.xz.b85") if incoming.exists() else \[\]:
+              encoded = source.read\_text(encoding="ascii").strip()
               if encoded == "BASALT-PARTS-4":
-                  parts = [pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)]
-                  missing = [str(part) for part in parts if not part.is_file()]
+                  parts = \[pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)\]
+                  missing = \[str(part) for part in parts if not part.is\_file()\]
                   if missing:
                       raise SystemExit("missing bundle parts: " + ", ".join(missing))
-                  encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+                  encoded = "".join(part.read\_text(encoding="ascii").strip() for part in parts)
                   if hashlib.sha256(encoded.encode("ascii")).hexdigest() != "da48a70628274dfcc5e0ca2283147f7a05f6770df1370a0e381fe8eef321c00f":
                       raise SystemExit("bundle checksum mismatch; refusing to apply")
                   for part in parts:
                       part.unlink()
               payload = lzma.decompress(base64.b85decode(encoded)).decode("utf-8")
-              target = source.with_name(source.name[:-len(".xz.b85")])
+              target = source.with\_name(source.name\[:-len(".xz.b85")\])
               if target.exists():
                   raise SystemExit(f"refusing to overwrite {target}")
-              target.write_text(payload, encoding="utf-8", newline="")
+              target.write\_text(payload, encoding="utf-8", newline="")
               source.unlink()
           PY
       - name: Apply incoming change bundle
         shell: bash
-        run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
+        run: python Tools/Delivery/apply\_bundle.py --summary-file "$RUNNER\_TEMP/basalt-bundle-summary.json"
       - name: Test bundle helper
         shell: bash
         run: |
-          if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
-            python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          if compgen -G 'Tools/Delivery/test\_\*.py' &gt; /dev/null; then
+            python -m unittest discover -s Tools/Delivery -p 'test\_*.py' -v
           else
             echo "No helper tests yet; the foundation bundle will add them."
           fi
       - name: Configure, build, and test the engine
         shell: bash
         run: |
-          if [ -f CMakeLists.txt ]; then
-            cmake -S . -B build -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-            cmake --build build --config Debug --parallel 2
-            ctest --test-dir build --build-config Debug --output-on-failure
+          if \[ -f CMakeLists.txt \]; then
+            cmake -S . -B "build/ci-${{ matrix.os }}" -DBASALT\_BUILD\_TESTS=ON -DCMAKE\_BUILD\_TYPE=Debug
+            cmake --build "build/ci-${{ matrix.os }}" --config Debug --parallel 2
+            ctest --test-dir "build/ci-${{ matrix.os }}" --build-config Debug --output-on-failure
           else
             echo "No engine source has been added yet; skipping the engine build."
           fi
@@ -79,22 +79,22 @@ jobs:
   commit-bundle:
     name: Commit verified bundle
     needs: verify
-    if: github.event_name == 'push'
+    if: github.event\_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.ref\_name }}
           persist-credentials: true
       - name: Detect bundle upload
         id: detect-bundle
         shell: bash
         run: |
-          if compgen -G 'Incoming/*.bundle.xz.b85' > /dev/null; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
+          if compgen -G 'Incoming/*.bundle.xz.b85' &gt; /dev/null; then
+            echo "present=true" &gt;&gt; "$GITHUB\_OUTPUT"
           else
-            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "present=false" &gt;&gt; "$GITHUB\_OUTPUT"
           fi
       - name: Set up Python
         if: steps.detect-bundle.outputs.present == 'true'
@@ -105,62 +105,62 @@ jobs:
         if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
-          python - <<'PY'
+          python - &lt;&lt;'PY'
           import base64, hashlib, lzma, pathlib
           incoming = pathlib.Path("Incoming")
-          for source in incoming.glob("*.bundle.xz.b85") if incoming.exists() else []:
-              encoded = source.read_text(encoding="ascii").strip()
+          for source in incoming.glob("\*.bundle.xz.b85") if incoming.exists() else \[\]:
+              encoded = source.read\_text(encoding="ascii").strip()
               if encoded == "BASALT-PARTS-4":
-                  parts = [pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)]
-                  missing = [str(part) for part in parts if not part.is_file()]
+                  parts = \[pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)\]
+                  missing = \[str(part) for part in parts if not part.is\_file()\]
                   if missing:
                       raise SystemExit("missing bundle parts: " + ", ".join(missing))
-                  encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+                  encoded = "".join(part.read\_text(encoding="ascii").strip() for part in parts)
                   if hashlib.sha256(encoded.encode("ascii")).hexdigest() != "da48a70628274dfcc5e0ca2283147f7a05f6770df1370a0e381fe8eef321c00f":
                       raise SystemExit("bundle checksum mismatch; refusing to apply")
                   for part in parts:
                       part.unlink()
               payload = lzma.decompress(base64.b85decode(encoded)).decode("utf-8")
-              target = source.with_name(source.name[:-len(".xz.b85")])
+              target = source.with\_name(source.name\[:-len(".xz.b85")\])
               if target.exists():
                   raise SystemExit(f"refusing to overwrite {target}")
-              target.write_text(payload, encoding="utf-8", newline="")
+              target.write\_text(payload, encoding="utf-8", newline="")
               source.unlink()
           PY
       - name: Apply bundle and collect commit details
         if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
-        run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
+        run: python Tools/Delivery/apply\_bundle.py --summary-file "$RUNNER\_TEMP/basalt-bundle-summary.json"
       - name: Test helper and engine before commit
         if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
-          if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
-            python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          if compgen -G 'Tools/Delivery/test\_\*.py' &gt; /dev/null; then
+            python -m unittest discover -s Tools/Delivery -p 'test\_*.py' -v
           fi
-          if [ -f CMakeLists.txt ]; then
-            cmake -S . -B build -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
-            cmake --build build --config Debug --parallel 2
-            ctest --test-dir build --build-config Debug --output-on-failure
+          if \[ -f CMakeLists.txt \]; then
+            cmake -S . -B build/ci-commit -DBASALT\_BUILD\_TESTS=ON -DCMAKE\_BUILD\_TYPE=Debug
+            cmake --build build/ci-commit --config Debug --parallel 2
+            ctest --test-dir build/ci-commit --build-config Debug --output-on-failure
           fi
       - name: Create commit and push
         if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
-          python - "$RUNNER_TEMP/basalt-bundle-summary.json" "$RUNNER_TEMP/basalt-commit-message.txt" <<'PY'
+          python - "$$RUNNER_TEMP/basalt-bundle-summary.json" "$$RUNNER\_TEMP/basalt-commit-message.txt" &lt;&lt;'PY'
           import json, pathlib, sys
-          bundles = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-          subject = bundles[0]["message"] if bundles else "Apply verified Basalt bundle"
-          body = "\n\n".join(item.get("body", "") for item in bundles if item.get("body"))
-          pathlib.Path(sys.argv[2]).write_text(subject + ("\n\n" + body if body else "") + "\n", encoding="utf-8")
+          bundles = json.loads(pathlib.Path(sys.argv\[1\]).read\_text(encoding="utf-8"))
+          subject = bundles\[0\]\["message"\] if bundles else "Apply verified Basalt bundle"
+          body = "\\n\\n".join(item.get("body", "") for item in bundles if item.get("body"))
+          pathlib.Path(sys.argv\[2\]).write\_text(subject + ("\\n\\n" + body if body else "") + "\\n", encoding="utf-8")
           PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions\[bot\]"
+          git config user.email "41898282+github-actions\[bot\]@users.noreply.github.com"
           git rm -r --cached --ignore-unmatch build
           git add --all
           if git diff --cached --quiet; then
             echo "No source changes to commit."
             exit 0
           fi
-          git commit --file "$RUNNER_TEMP/basalt-commit-message.txt"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git commit --file "$RUNNER\_TEMP/basalt-commit-message.txt"
+          git push origin "HEAD:${GITHUB\_REF\_NAME}"

@@ -2,6 +2,9 @@ name: Apply and test change bundles
 
 on:
   push:
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'BundleParts/**'
   pull_request:
 
 permissions:
@@ -30,10 +33,21 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import base64, lzma, pathlib
+          import base64, hashlib, lzma, pathlib
           incoming = pathlib.Path("Incoming")
           for source in incoming.glob("*.bundle.xz.b85") if incoming.exists() else []:
-              payload = lzma.decompress(base64.b85decode(source.read_text(encoding="ascii").strip())).decode("utf-8")
+              encoded = source.read_text(encoding="ascii").strip()
+              if encoded == "BASALT-PARTS-4":
+                  parts = [pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)]
+                  missing = [str(part) for part in parts if not part.is_file()]
+                  if missing:
+                      raise SystemExit("missing bundle parts: " + ", ".join(missing))
+                  encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+                  if hashlib.sha256(encoded.encode("ascii")).hexdigest() != "da48a70628274dfcc5e0ca2283147f7a05f6770df1370a0e381fe8eef321c00f":
+                      raise SystemExit("bundle checksum mismatch; refusing to apply")
+                  for part in parts:
+                      part.unlink()
+              payload = lzma.decompress(base64.b85decode(encoded)).decode("utf-8")
               target = source.with_name(source.name[:-len(".xz.b85")])
               if target.exists():
                   raise SystemExit(f"refusing to overwrite {target}")
@@ -81,10 +95,21 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import base64, lzma, pathlib
+          import base64, hashlib, lzma, pathlib
           incoming = pathlib.Path("Incoming")
           for source in incoming.glob("*.bundle.xz.b85") if incoming.exists() else []:
-              payload = lzma.decompress(base64.b85decode(source.read_text(encoding="ascii").strip())).decode("utf-8")
+              encoded = source.read_text(encoding="ascii").strip()
+              if encoded == "BASALT-PARTS-4":
+                  parts = [pathlib.Path(f"BundleParts/BasaltFoundation/part-{index:02}.b85") for index in range(1, 5)]
+                  missing = [str(part) for part in parts if not part.is_file()]
+                  if missing:
+                      raise SystemExit("missing bundle parts: " + ", ".join(missing))
+                  encoded = "".join(part.read_text(encoding="ascii").strip() for part in parts)
+                  if hashlib.sha256(encoded.encode("ascii")).hexdigest() != "da48a70628274dfcc5e0ca2283147f7a05f6770df1370a0e381fe8eef321c00f":
+                      raise SystemExit("bundle checksum mismatch; refusing to apply")
+                  for part in parts:
+                      part.unlink()
+              payload = lzma.decompress(base64.b85decode(encoded)).decode("utf-8")
               target = source.with_name(source.name[:-len(".xz.b85")])
               if target.exists():
                   raise SystemExit(f"refusing to overwrite {target}")

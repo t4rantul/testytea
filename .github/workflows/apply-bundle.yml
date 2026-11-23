@@ -5,7 +5,7 @@ on:
     paths-ignore:
       - '.github/workflows/**'
       - 'BundleParts/**'
-  pull\_request:
+  "pull\u005frequest":
 
 permissions:
   contents: read
@@ -35,50 +35,50 @@ jobs:
       - name: Expand compressed change bundles
         shell: bash
         run: |
-          python - &lt;&lt;'PY'
+          python - <<'PY'
           import base64, hashlib, lzma, pathlib, re
           incoming = pathlib.Path('Incoming')
           for source in incoming.glob('*.bundle.xz.b85') if incoming.exists() else ():
-              encoded = source.read\_text(encoding='ascii').strip()
+              encoded = source.read_text(encoding='ascii').strip()
               if encoded.startswith('BASALT-PARTS-1 '):
                   fields = encoded.split()
                   if len(fields) != 4:
                       raise SystemExit(f'invalid multipart marker: {source}')
-                  , batch, count\_text, expected = fields
-                  if re.fullmatch(r'\[A-Za-z0-9\]\[A-Za-z0-9-\]{0,63}', batch) is None:
+                  _, batch, count_text, expected = fields
+                  if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}', batch) is None:
                       raise SystemExit(f'invalid multipart batch name: {batch}')
                   try:
-                      count = int(count\_text)
+                      count = int(count_text)
                   except ValueError as error:
-                      raise SystemExit(f'invalid multipart part count: {count\_text}') from error
-                  if count &lt; 1 or count &gt; 128:
+                      raise SystemExit(f'invalid multipart part count: {count_text}') from error
+                  if count < 1 or count > 128:
                       raise SystemExit(f'multipart part count out of range: {count}')
-                  parts\_dir = pathlib.Path('BundleParts') / batch
-                  parts = \[parts\_dir / f'part-{index:03}.b85' for index in range(1, count + 1)\]
-                  missing = \[str(part) for part in parts if not part.is\_file()\]
+                  parts_dir = pathlib.Path('BundleParts') / batch
+                  parts = [parts_dir / f'part-{index:03}.b85' for index in range(1, count + 1)]
+                  missing = [str(part) for part in parts if not part.is_file()]
                   if missing:
                       raise SystemExit('missing bundle parts: ' + ', '.join(missing))
-                  encoded = ''.join(part.read\_text(encoding='ascii').strip() for part in parts)
+                  encoded = ''.join(part.read_text(encoding='ascii').strip() for part in parts)
                   actual = hashlib.sha256(encoded.encode('ascii')).hexdigest()
                   if actual != expected:
                       raise SystemExit('bundle checksum mismatch; refusing to apply')
                   for part in parts:
                       part.unlink()
-                  parts\_dir.rmdir()
+                  parts_dir.rmdir()
               payload = lzma.decompress(base64.b85decode(encoded)).decode('utf-8')
-              target = source.with\_name(source.name\[:-len('.xz.b85')\])
+              target = source.with_name(source.name[:-len('.xz.b85')])
               if target.exists():
                   raise SystemExit(f'refusing to overwrite {target}')
-              target.write\_text(payload, encoding='utf-8', newline='')
+              target.write_text(payload, encoding='utf-8', newline='')
           PY
       - name: Apply incoming change bundle
         shell: bash
-        run: python Tools/Delivery/apply\_bundle.py --summary-file build/ci-verify/bundle-summary.json
+        run: python Tools/Delivery/apply_bundle.py --summary-file build/ci-verify/bundle-summary.json
       - name: Test bundle helper
         shell: bash
         run: |
-          if compgen -G 'Tools/Delivery/test\_*.py' &gt; /dev/null; then
-            python -m unittest discover -s Tools/Delivery -p 'test\_\*.py' -v
+          if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
+            python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
           else
             echo 'No helper tests yet; the foundation bundle will add them.'
           fi
@@ -86,7 +86,7 @@ jobs:
         shell: bash
         run: |
           if test -f CMakeLists.txt; then
-            cmake -S . -B 'build/ci-${{ matrix.os }}' -DBASALT\_BUILD\_TESTS=ON -DCMAKE\_BUILD\_TYPE=Debug
+            cmake -S . -B 'build/ci-${{ matrix.os }}' -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
             cmake --build 'build/ci-${{ matrix.os }}' --config Debug --parallel 2
             ctest --test-dir 'build/ci-${{ matrix.os }}' --build-config Debug --output-on-failure
           else
@@ -115,68 +115,68 @@ jobs:
         if: hashFiles('Incoming/*.bundle.xz.b85') != ''
         shell: bash
         run: |
-          python - &lt;&lt;'PY'
+          python - <<'PY'
           import base64, hashlib, lzma, pathlib, re
           incoming = pathlib.Path('Incoming')
           for source in incoming.glob('*.bundle.xz.b85') if incoming.exists() else ():
-              encoded = source.read\_text(encoding='ascii').strip()
+              encoded = source.read_text(encoding='ascii').strip()
               if encoded.startswith('BASALT-PARTS-1 '):
                   fields = encoded.split()
                   if len(fields) != 4:
                       raise SystemExit(f'invalid multipart marker: {source}')
-                  , batch, count\_text, expected = fields
-                  if re.fullmatch(r'\[A-Za-z0-9\]\[A-Za-z0-9-\]{0,63}', batch) is None:
+                  _, batch, count_text, expected = fields
+                  if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}', batch) is None:
                       raise SystemExit(f'invalid multipart batch name: {batch}')
                   try:
-                      count = int(count\_text)
+                      count = int(count_text)
                   except ValueError as error:
-                      raise SystemExit(f'invalid multipart part count: {count\_text}') from error
-                  if count &lt; 1 or count &gt; 128:
+                      raise SystemExit(f'invalid multipart part count: {count_text}') from error
+                  if count < 1 or count > 128:
                       raise SystemExit(f'multipart part count out of range: {count}')
-                  parts\_dir = pathlib.Path('BundleParts') / batch
-                  parts = \[parts\_dir / f'part-{index:03}.b85' for index in range(1, count + 1)\]
-                  missing = \[str(part) for part in parts if not part.is\_file()\]
+                  parts_dir = pathlib.Path('BundleParts') / batch
+                  parts = [parts_dir / f'part-{index:03}.b85' for index in range(1, count + 1)]
+                  missing = [str(part) for part in parts if not part.is_file()]
                   if missing:
                       raise SystemExit('missing bundle parts: ' + ', '.join(missing))
-                  encoded = ''.join(part.read\_text(encoding='ascii').strip() for part in parts)
+                  encoded = ''.join(part.read_text(encoding='ascii').strip() for part in parts)
                   actual = hashlib.sha256(encoded.encode('ascii')).hexdigest()
                   if actual != expected:
                       raise SystemExit('bundle checksum mismatch; refusing to apply')
                   for part in parts:
                       part.unlink()
-                  parts\_dir.rmdir()
+                  parts_dir.rmdir()
               payload = lzma.decompress(base64.b85decode(encoded)).decode('utf-8')
-              target = source.with\_name(source.name\[:-len('.xz.b85')\])
+              target = source.with_name(source.name[:-len('.xz.b85')])
               if target.exists():
                   raise SystemExit(f'refusing to overwrite {target}')
-              target.write\_text(payload, encoding='utf-8', newline='')
+              target.write_text(payload, encoding='utf-8', newline='')
           PY
       - name: Apply bundle and collect commit details
         if: hashFiles('Incoming/*.bundle.xz.b85') != ''
         shell: bash
-        run: python Tools/Delivery/apply\_bundle.py --summary-file build/ci-commit/bundle-summary.json
+        run: python Tools/Delivery/apply_bundle.py --summary-file build/ci-commit/bundle-summary.json
       - name: Test helper and engine before commit
         if: hashFiles('Incoming/*.bundle.xz.b85') != ''
         shell: bash
         run: |
-          python -m unittest discover -s Tools/Delivery -p 'test\_*.py' -v
-          cmake -S . -B build/ci-commit -DBASALT\_BUILD\_TESTS=ON -DCMAKE\_BUILD\_TYPE=Debug
+          python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          cmake -S . -B build/ci-commit -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build/ci-commit --config Debug --parallel 2
           ctest --test-dir build/ci-commit --build-config Debug --output-on-failure
       - name: Create commit and push
         if: hashFiles('Incoming/*.bundle.xz.b85') != ''
         shell: bash
         run: |
-          python - build/ci-commit/bundle-summary.json build/ci-commit/commit-message.txt &lt;&lt;'PY'
+          python - build/ci-commit/bundle-summary.json build/ci-commit/commit-message.txt <<'PY'
           import json, pathlib, sys
-          bundles = json.loads(pathlib.Path(sys.argv\[1\]).read\_text(encoding='utf-8'))
-          subject = bundles\[0\]\['message'\] if bundles else 'Apply verified Basalt bundle'
-          body = '\\n\\n'.join(item.get('body', '') for item in bundles if item.get('body'))
-          pathlib.Path(sys.argv\[2\]).write\_text(subject + ('\\n\\n' + body if body else '') + '\\n', encoding='utf-8')
+          bundles = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          subject = bundles[0]['message'] if bundles else 'Apply verified Basalt bundle'
+          body = '\n\n'.join(item.get('body', '') for item in bundles if item.get('body'))
+          pathlib.Path(sys.argv[2]).write_text(subject + ('\n\n' + body if body else '') + '\n', encoding='utf-8')
           PY
           rm -f Incoming/*.bundle.xz.b85
           git config user.name 'github-actions'
-          git config user.email '[github-actions@users.noreply.github.com](mailto:github-actions@users.noreply.github.com)'
+          git config user.email 'github-actions@users.noreply.github.com'
           git rm -r --cached --ignore-unmatch build
           git add --all
           if git diff --cached --quiet; then

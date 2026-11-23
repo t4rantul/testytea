@@ -45,7 +45,6 @@ jobs:
               if target.exists():
                   raise SystemExit(f'refusing to overwrite {target}')
               target.write_text(payload, encoding='utf-8', newline='')
-              source.unlink()
           PY
       - name: Apply incoming change bundle
         shell: bash
@@ -99,7 +98,6 @@ jobs:
               if target.exists():
                   raise SystemExit(f'refusing to overwrite {target}')
               target.write_text(payload, encoding='utf-8', newline='')
-              source.unlink()
           PY
       - name: Apply bundle and collect commit details
         if: hashFiles('Incoming/*.bundle.xz.b85') != ''
@@ -124,6 +122,7 @@ jobs:
           body = '\n\n'.join(item.get('body', '') for item in bundles if item.get('body'))
           pathlib.Path(sys.argv[2]).write_text(subject + ('\n\n' + body if body else '') + '\n', encoding='utf-8')
           PY
+          rm -f Incoming/*.bundle.xz.b85
           git config user.name 'github-actions'
           git config user.email 'github-actions@users.noreply.github.com'
           git rm -r --cached --ignore-unmatch build

@@ -1,0 +1,91 @@
+name: Apply and test change bundles
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: basalt-ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply incoming change bundle
+        shell: bash
+        run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
+      - name: Test bundle helper
+        shell: bash
+        run: python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+      - name: Configure, build, and test the engine
+        shell: bash
+        run: |
+          if [ -f CMakeLists.txt ]; then
+            cmake -S . -B build -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+            cmake --build build --config Debug --parallel 2
+            ctest --test-dir build --build-config Debug --output-on-failure
+          else
+            echo "No engine source has been added yet; skipping the engine build."
+          fi
+
+  commit-bundle:
+    name: Commit verified bundle
+    needs: verify
+    if: github.event_name == 'push' && contains(toJSON(github.event.commits), 'Incoming/')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply bundle and collect commit details
+        shell: bash
+        run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
+      - name: Test helper and engine before commit
+        shell: bash
+        run: |
+          python -m unittest discover -s Tools/Delivery -p 'test_*.py' -v
+          if [ -f CMakeLists.txt ]; then
+            cmake -S . -B build -DBASALT_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+            cmake --build build --config Debug --parallel 2
+            ctest --test-dir build --build-config Debug --output-on-failure
+          fi
+      - name: Create commit and push
+        shell: bash
+        run: |
+          python - "$RUNNER_TEMP/basalt-bundle-summary.json" "$RUNNER_TEMP/basalt-commit-message.txt" <<'PY'
+          import json, pathlib, sys
+          bundles = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+          subject = bundles[0]["message"] if bundles else "Apply verified Basalt bundle"
+          body = "\n\n".join(item.get("body", "") for item in bundles if item.get("body"))
+          pathlib.Path(sys.argv[2]).write_text(subject + ("\n\n" + body if body else "") + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit --file "$RUNNER_TEMP/basalt-commit-message.txt"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libBasaltCore.a CMakeFiles/BasaltCore.dir/src/Basalt/Core/Scene.cpp.o
+/usr/bin/ranlib libBasaltCore.a

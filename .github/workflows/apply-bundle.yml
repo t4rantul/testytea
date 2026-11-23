@@ -79,7 +79,7 @@ jobs:
   commit-bundle:
     name: Commit verified bundle
     needs: verify
-    if: github.event_name == 'push' && contains(toJSON(github.event.commits), 'Incoming/')
+    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -87,11 +87,22 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           persist-credentials: true
+      - name: Detect bundle upload
+        id: detect-bundle
+        shell: bash
+        run: |
+          if compgen -G 'Incoming/*.bundle.xz.b85' > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Set up Python
+        if: steps.detect-bundle.outputs.present == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Expand compressed change bundles
+        if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
           python - <<'PY'
@@ -117,9 +128,11 @@ jobs:
               source.unlink()
           PY
       - name: Apply bundle and collect commit details
+        if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: python Tools/Delivery/apply_bundle.py --summary-file "$RUNNER_TEMP/basalt-bundle-summary.json"
       - name: Test helper and engine before commit
+        if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
           if compgen -G 'Tools/Delivery/test_*.py' > /dev/null; then
@@ -131,6 +144,7 @@ jobs:
             ctest --test-dir build --build-config Debug --output-on-failure
           fi
       - name: Create commit and push
+        if: steps.detect-bundle.outputs.present == 'true'
         shell: bash
         run: |
           python - "$RUNNER_TEMP/basalt-bundle-summary.json" "$RUNNER_TEMP/basalt-commit-message.txt" <<'PY'
